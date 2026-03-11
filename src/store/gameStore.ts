@@ -35,6 +35,7 @@ export type GameState = {
   loversIds: [string, string] | null;
   winner: "village" | "wolves" | "lovers" | "nobody" | null;
   gameLogs: GameLogEntry[];
+  seerKnownIds: string[];
 };
 
 type GameActions = {
@@ -57,6 +58,7 @@ type GameActions = {
   nextRound: () => void;
   resetGame: () => void;
   addLog: (type: string, message: string) => void;
+  seerReveal: (id: string) => void;
 };
 
 const initialState: GameState = {
@@ -73,6 +75,7 @@ const initialState: GameState = {
   loversIds: null,
   winner: null,
   gameLogs: [],
+  seerKnownIds: [],
 };
 
 export const useGameStore = create<GameState & GameActions>()(
@@ -100,28 +103,43 @@ export const useGameStore = create<GameState & GameActions>()(
         })),
 
       registerPlayer: (name, role) =>
-        set((state) => ({
-          players: [
+        set((state) => {
+          const playerId = Date.now().toString();
+          const nextPlayers = [
             ...state.players,
             {
-              id: Date.now().toString(),
+              id: playerId,
               name,
               role,
-              status: "alive",
+              status: "alive" as const,
             },
-          ],
-        })),
+          ];
+          const nextSeerKnownIds =
+            role.id === "seer" && !state.seerKnownIds.includes(playerId)
+              ? [...state.seerKnownIds, playerId]
+              : state.seerKnownIds;
+
+          return {
+            players: nextPlayers,
+            seerKnownIds: nextSeerKnownIds,
+          };
+        }),
 
       setPendingRoles: (roles) => set({ pendingRoles: roles }),
 
       assignRoles: (roles) =>
         set((state) => {
           const shuffled = [...roles].sort(() => Math.random() - 0.5);
+          const assignedPlayers = state.players.map((p, i) => ({
+            ...p,
+            role: shuffled[i % shuffled.length],
+          }));
           return {
-            players: state.players.map((p, i) => ({
-              ...p,
-              role: shuffled[i % shuffled.length],
-            })),
+            players: assignedPlayers,
+            // The Seer already knows their own identity from the start.
+            seerKnownIds: assignedPlayers
+              .filter((p) => p.role.id === "seer")
+              .map((p) => p.id),
           };
         }),
 
@@ -169,6 +187,13 @@ export const useGameStore = create<GameState & GameActions>()(
       },
 
       useHunterShot: () => set({ hunterShotUsed: true }),
+
+      seerReveal: (id) =>
+        set((state) => ({
+          seerKnownIds: state.seerKnownIds.includes(id)
+            ? state.seerKnownIds
+            : [...state.seerKnownIds, id],
+        })),
 
       setMayor: (id) => set({ mayorId: id }),
 

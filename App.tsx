@@ -10,19 +10,21 @@ import MayorSuccessionScreen from "./src/screens/MayorSuccessionScreen";
 import HunterScreen from "./src/screens/HunterScreen";
 import GameBoardScreen from "./src/screens/GameBoardScreen";
 import WerewolfNightScreen from "./src/screens/WerewolfNightScreen";
+import SeerNightScreen from "./src/screens/SeerNightScreen";
 import DayVoteScreen from "./src/screens/DayVoteScreen";
 import GameOverScreen from "./src/screens/GameOverScreen";
 import { useGameStore } from "./src/store/gameStore";
 import { stopAll, toggleMute, isMuted } from "./src/utils/speech";
 import { checkWinCondition } from "./src/utils/gameLogic";
 
-type Screen = "home" | "setup" | "card_pick" | "cupid" | "mayor_election" | "mayor_succession" | "hunter_succession" | "game_board" | "werewolf_night" | "day_vote" | "game_over";
+type Screen = "home" | "setup" | "card_pick" | "cupid" | "mayor_election" | "mayor_succession" | "hunter_succession" | "game_board" | "werewolf_night" | "seer_night" | "day_vote" | "game_over";
 
 // Night role processing order (cupid is Day 0 only, handled separately)
 const NIGHT_ORDER = ["seer", "werewolf", "witch"];
 
 // Which screen handles each role's night action (expand as screens are added)
 const NIGHT_SCREENS: Partial<Record<string, Screen>> = {
+  seer: "seer_night",
   werewolf: "werewolf_night",
 };
 
@@ -215,6 +217,9 @@ export default function App() {
       )}
       {screen === "werewolf_night" && (
         <WerewolfNightScreen onDone={advanceNightQueue} />
+      )}
+      {screen === "seer_night" && (
+        <SeerNightScreen onDone={advanceNightQueue} />
       )}
       {screen === "day_vote" && (
         <DayVoteScreen
