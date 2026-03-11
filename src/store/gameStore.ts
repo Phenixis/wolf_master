@@ -30,6 +30,7 @@ export type GameState = {
   nightVictimId: string | null;  // who the wolves chose this night
   witchSaveUsed: boolean;
   witchKillUsed: boolean;
+  hunterShotUsed: boolean;
   mayorId: string | null;
   loversIds: [string, string] | null;
   winner: "village" | "wolves" | "lovers" | "nobody" | null;
@@ -49,6 +50,7 @@ type GameActions = {
   setNightVictim: (id: string | null) => void;
   useWitchSave: () => void;
   useWitchKill: (targetId: string) => void;
+  useHunterShot: () => void;
   setMayor: (id: string) => void;
   setLovers: (ids: [string, string]) => void;
   setWinner: (team: GameState["winner"]) => void;
@@ -66,6 +68,7 @@ const initialState: GameState = {
   nightVictimId: null,
   witchSaveUsed: false,
   witchKillUsed: false,
+  hunterShotUsed: false,
   mayorId: null,
   loversIds: null,
   winner: null,
@@ -164,6 +167,8 @@ export const useGameStore = create<GameState & GameActions>()(
           };
         });
       },
+
+      useHunterShot: () => set({ hunterShotUsed: true }),
 
       setMayor: (id) => set({ mayorId: id }),
 

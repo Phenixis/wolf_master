@@ -7,6 +7,7 @@ import CardPickScreen from "./src/screens/CardPickScreen";
 import CupidScreen from "./src/screens/CupidScreen";
 import MayorElectionScreen from "./src/screens/MayorElectionScreen";
 import MayorSuccessionScreen from "./src/screens/MayorSuccessionScreen";
+import HunterScreen from "./src/screens/HunterScreen";
 import GameBoardScreen from "./src/screens/GameBoardScreen";
 import WerewolfNightScreen from "./src/screens/WerewolfNightScreen";
 import DayVoteScreen from "./src/screens/DayVoteScreen";
@@ -15,7 +16,7 @@ import { useGameStore } from "./src/store/gameStore";
 import { stopAll, toggleMute, isMuted } from "./src/utils/speech";
 import { checkWinCondition } from "./src/utils/gameLogic";
 
-type Screen = "home" | "setup" | "card_pick" | "cupid" | "mayor_election" | "mayor_succession" | "game_board" | "werewolf_night" | "day_vote" | "game_over";
+type Screen = "home" | "setup" | "card_pick" | "cupid" | "mayor_election" | "mayor_succession" | "hunter_succession" | "game_board" | "werewolf_night" | "day_vote" | "game_over";
 
 // Night role processing order (cupid is Day 0 only, handled separately)
 const NIGHT_ORDER = ["seer", "werewolf", "witch"];
@@ -38,6 +39,7 @@ export default function App() {
   const [dayVoteCompleted, setDayVoteCompleted] = useState(false);
   const [muted, setMuted] = useState(isMuted());
   const [afterSuccession, setAfterSuccession] = useState<(() => void) | null>(null);
+  const [afterHunter, setAfterHunter] = useState<(() => void) | null>(null);
 
   const players = useGameStore((s) => s.players);
   const phase = useGameStore((s) => s.phase);
@@ -52,6 +54,22 @@ export default function App() {
     if (mayorId && players.find((p) => p.id === mayorId)?.status === "dead") {
       setAfterSuccession(() => thenDo);
       setScreen("mayor_succession");
+    } else {
+      thenDo();
+    }
+  };
+
+  // If the Hunter just died and hasn't shot yet, show the Hunter screen before continuing.
+  // The hunter's shot always happens BEFORE mayor succession (so if hunter = mayor,
+  // the shot resolves first, then succession is triggered in the continuation).
+  const checkHunterSuccession = (thenDo: () => void) => {
+    const { players, hunterShotUsed } = useGameStore.getState();
+    const hasDeadHunter =
+      !hunterShotUsed &&
+      players.some((p) => p.role.id === "hunter" && p.status === "dead");
+    if (hasDeadHunter) {
+      setAfterHunter(() => thenDo);
+      setScreen("hunter_succession");
     } else {
       thenDo();
     }
@@ -114,9 +132,11 @@ export default function App() {
     setPhase("day");
     setNightQueue([]);
     setNightQueueIdx(0);
-    if (!checkAndRoute()) {
-      checkMayorSuccession(() => setScreen("game_board"));
-    }
+    checkHunterSuccession(() => {
+      if (!checkAndRoute()) {
+        checkMayorSuccession(() => setScreen("game_board"));
+      }
+    });
   };
 
   const getNextAction = (): { label: string; handler: () => void } => {
@@ -184,7 +204,13 @@ export default function App() {
           onEndGame={() => setScreen("home")}
           nextActionLabel={nextAction.label}
           onNextAction={nextAction.handler}
-          onEliminate={checkAndRoute}
+          onEliminate={() => {
+            checkHunterSuccession(() => {
+              if (!checkAndRoute()) {
+                checkMayorSuccession(() => setScreen("game_board"));
+              }
+            });
+          }}
         />
       )}
       {screen === "werewolf_night" && (
@@ -194,9 +220,20 @@ export default function App() {
         <DayVoteScreen
           onDone={() => {
             setDayVoteCompleted(true);
-            if (!checkAndRoute()) {
-              checkMayorSuccession(() => setScreen("game_board"));
-            }
+            checkHunterSuccession(() => {
+              if (!checkAndRoute()) {
+                checkMayorSuccession(() => setScreen("game_board"));
+              }
+            });
+          }}
+        />
+      )}
+      {screen === "hunter_succession" && (
+        <HunterScreen
+          onDone={() => {
+            const next = afterHunter;
+            setAfterHunter(null);
+            if (next) next();
           }}
         />
       )}
