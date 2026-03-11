@@ -75,6 +75,9 @@ export default function GameBoardScreen({ onEndGame, nextActionLabel, onNextActi
 
   const [areaSize, setAreaSize] = useState({ width: 0, height: 0 });
   const [selected, setSelected] = useState<Player | null>(null);
+  const [roleCheckPlayer, setRoleCheckPlayer] = useState<Player | null>(null);
+  const [roleCheckRevealed, setRoleCheckRevealed] = useState(false);
+  const [roleCheckReturning, setRoleCheckReturning] = useState(false);
 
   const isNight = phase === "night";
   const t = isNight ? NIGHT : DAY;
@@ -94,6 +97,84 @@ export default function GameBoardScreen({ onEndGame, nextActionLabel, onNextActi
     eliminatePlayer(selected.id);
     setSelected(null);
     onEliminate?.();
+  };
+
+  const handleCheckRole = () => {
+    if (!selected) return;
+    setRoleCheckPlayer(selected);
+    setRoleCheckRevealed(false);
+    setSelected(null);
+  };
+
+  const handleRoleCheckDone = () => {
+    setRoleCheckReturning(true);
+  };
+
+  const handleRoleCheckReturn = () => {
+    setRoleCheckPlayer(null);
+    setRoleCheckRevealed(false);
+    setRoleCheckReturning(false);
+  };
+
+  const renderRoleCheckContent = () => {
+    if (roleCheckReturning) {
+      return (
+        <TouchableOpacity style={styles.roleCheckBlank} onPress={handleRoleCheckReturn} activeOpacity={1}>
+          <Text style={[styles.roleCheckBlankHint]}>
+            GM, make sure the player has returned the phone to you and is not looking at the screen before tapping.
+          </Text>
+          <Text style={[styles.roleCheckBlankHint, { color: t.textMuted }]}>
+            Tap to continue
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+    if (roleCheckRevealed) {
+      return (
+        <View style={styles.roleCheckInfoView}>
+          <Text style={[styles.roleCheckYourRole, { color: t.textMuted }]}>Your role</Text>
+          <Text style={[styles.roleCheckRoleName, { color: t.accent }]}>
+            {roleCheckPlayer?.role.name}
+          </Text>
+          <Text style={[styles.roleCheckTeam, { color: t.textSecondary }]}>
+            Team: {roleCheckPlayer?.role.team}
+          </Text>
+          <View style={[styles.roleCheckDivider, { backgroundColor: isNight ? "#1e2a3a" : "#ddd" }]} />
+          <Text style={[styles.roleCheckDesc, { color: t.textPrimary }]}>
+            {roleCheckPlayer?.role.description}
+          </Text>
+          <View style={[styles.roleCheckDivider, { backgroundColor: isNight ? "#1e2a3a" : "#ddd" }]} />
+          <Text style={[styles.roleCheckUsageLabel, { color: t.textMuted }]}>
+            {roleCheckPlayer?.role.nightAction ? "Active at night" : "Passive / triggered effect"}
+          </Text>
+          <TouchableOpacity
+            style={[styles.roleCheckDoneBtn, { backgroundColor: t.accent }]}
+            onPress={handleRoleCheckDone}
+          >
+            <Text style={styles.roleCheckDoneBtnText}>Done — give phone back to GM</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.roleCheckPassView}>
+        <Text style={[styles.roleCheckPassLabel, { color: t.textSecondary }]}>
+          Pass the phone to
+        </Text>
+        <Text style={[styles.roleCheckPlayerName, { color: t.textPrimary }]}>
+          {roleCheckPlayer?.name}
+        </Text>
+        <Text style={[styles.roleCheckHint, { color: t.textMuted }]}>
+          Make sure only {roleCheckPlayer?.name} is looking at the screen
+        </Text>
+        <TouchableOpacity
+          style={[styles.roleCheckRevealBtn, { backgroundColor: t.accent }]}
+          onPress={() => setRoleCheckRevealed(true)}
+        >
+          <Text style={styles.roleCheckRevealBtnText}>Tap to reveal your role</Text>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   const handleEndGame = () => {
@@ -193,6 +274,13 @@ export default function GameBoardScreen({ onEndGame, nextActionLabel, onNextActi
         <Text style={[styles.endBtnText, { color: t.accent }]}>End Game</Text>
       </TouchableOpacity>
 
+      {/* Role check full-screen modal */}
+      <Modal visible={roleCheckPlayer !== null} animationType="fade">
+        <View style={[styles.roleCheckContainer, { backgroundColor: t.bg }]}>
+          {renderRoleCheckContent()}
+        </View>
+      </Modal>
+
       {/* Player action modal */}
       <Modal visible={selected !== null} transparent animationType="fade">
         <TouchableOpacity style={styles.backdrop} onPress={() => setSelected(null)} activeOpacity={1}>
@@ -203,6 +291,9 @@ export default function GameBoardScreen({ onEndGame, nextActionLabel, onNextActi
             {selected && loversIds?.includes(selected.id) && (
               <Text style={[styles.modalBadge, { color: "#e94560" }]}>♥ Lover</Text>
             )}
+            <TouchableOpacity style={styles.checkRoleBtn} onPress={handleCheckRole}>
+              <Text style={[styles.checkRoleBtnText, { color: t.accent }]}>Check Role</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.eliminateBtn} onPress={handleEliminate}>
               <Text style={styles.eliminateBtnText}>Eliminate</Text>
             </TouchableOpacity>
@@ -314,4 +405,38 @@ const styles = StyleSheet.create({
   eliminateBtnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
   cancelBtn: { padding: 10, width: "100%", alignItems: "center" },
   cancelBtnText: { fontSize: 14 },
+
+  checkRoleBtn: {
+    padding: 14,
+    borderRadius: 10,
+    width: "100%",
+    alignItems: "center",
+    marginTop: 12,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  checkRoleBtnText: { fontWeight: "bold", fontSize: 15 },
+
+  // Role check full-screen modal
+  roleCheckContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: 32 },
+  roleCheckPassView: { width: "100%", alignItems: "center" },
+  roleCheckPassLabel: { fontSize: 16, marginBottom: 8 },
+  roleCheckPlayerName: { fontSize: 32, fontWeight: "bold", marginBottom: 16, textAlign: "center" },
+  roleCheckHint: { fontSize: 13, textAlign: "center", marginBottom: 32 },
+  roleCheckRevealBtn: { padding: 18, borderRadius: 12, width: "100%", alignItems: "center" },
+  roleCheckRevealBtnText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+
+  roleCheckInfoView: { width: "100%", alignItems: "center" },
+  roleCheckYourRole: { fontSize: 14, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 },
+  roleCheckRoleName: { fontSize: 36, fontWeight: "bold", marginBottom: 4, textAlign: "center" },
+  roleCheckTeam: { fontSize: 14, marginBottom: 16, textTransform: "capitalize" },
+  roleCheckDivider: { height: 1, width: "100%", marginVertical: 16 },
+  roleCheckDesc: { fontSize: 16, textAlign: "center", lineHeight: 24, marginBottom: 4 },
+  roleCheckUsageLabel: { fontSize: 13, marginBottom: 32, fontStyle: "italic" },
+  roleCheckDoneBtn: { padding: 16, borderRadius: 12, width: "100%", alignItems: "center" },
+  roleCheckDoneBtnText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+
+  roleCheckBlank: { flex: 1, width: "100%", justifyContent: "flex-end", alignItems: "center", paddingBottom: 48 },
+  roleCheckBlankHint: { fontSize: 13, fontStyle: "italic", textAlign: "center" },
 });

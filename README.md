@@ -14,7 +14,8 @@ Wolf Master is an application that is used on a phone to manage a party of Werew
 
 ## Game Design — How It Works
 
-Wolf Master is designed for **one dedicated Game Master (GM)** who holds the phone throughout the entire game. Players never touch the phone.
+Wolf Master is designed for **one dedicated Game Master (GM)** who holds the phone throughout the entire game.
+Players touch the phone during the setup phase to see their assigned role, and after that only when they have an action to take (e.g., when the hunted has to choose a victim, or when the Seer has to look at a card). The GM is responsible for narrating the game and guiding players through the night and day phases.
 
 ### Night Phase
 - TTS narrates each step: *"Everyone close your eyes… Wolves, open your eyes and point at your target"*
