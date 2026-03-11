@@ -11,13 +11,14 @@ import HunterScreen from "./src/screens/HunterScreen";
 import GameBoardScreen from "./src/screens/GameBoardScreen";
 import WerewolfNightScreen from "./src/screens/WerewolfNightScreen";
 import SeerNightScreen from "./src/screens/SeerNightScreen";
+import WitchNightScreen from "./src/screens/WitchNightScreen";
 import DayVoteScreen from "./src/screens/DayVoteScreen";
 import GameOverScreen from "./src/screens/GameOverScreen";
 import { useGameStore } from "./src/store/gameStore";
 import { stopAll, toggleMute, isMuted } from "./src/utils/speech";
 import { checkWinCondition } from "./src/utils/gameLogic";
 
-type Screen = "home" | "setup" | "card_pick" | "cupid" | "mayor_election" | "mayor_succession" | "hunter_succession" | "game_board" | "werewolf_night" | "seer_night" | "day_vote" | "game_over";
+type Screen = "home" | "setup" | "card_pick" | "cupid" | "mayor_election" | "mayor_succession" | "hunter_succession" | "game_board" | "werewolf_night" | "seer_night" | "witch_night" | "day_vote" | "game_over";
 
 // Night role processing order (cupid is Day 0 only, handled separately)
 const NIGHT_ORDER = ["seer", "werewolf", "witch"];
@@ -26,6 +27,7 @@ const NIGHT_ORDER = ["seer", "werewolf", "witch"];
 const NIGHT_SCREENS: Partial<Record<string, Screen>> = {
   seer: "seer_night",
   werewolf: "werewolf_night",
+  witch: "witch_night",
 };
 
 const NIGHT_LABELS: Record<string, string> = {
@@ -101,9 +103,15 @@ export default function App() {
 
   const startNight = () => {
     // Read latest players directly to avoid stale closure
-    const alivePlayers = useGameStore.getState().players.filter((p) => p.status === "alive");
+    const { players: latestPlayers, witchSaveUsed, witchKillUsed } = useGameStore.getState();
+    const alivePlayers = latestPlayers.filter((p) => p.status === "alive");
     const aliveRoleIds = new Set(alivePlayers.map((p) => p.role.id));
-    const queue = NIGHT_ORDER.filter((id) => aliveRoleIds.has(id));
+    const queue = NIGHT_ORDER.filter((id) => {
+      if (!aliveRoleIds.has(id)) return false;
+      // Skip witch if both potions are already spent
+      if (id === "witch" && witchSaveUsed && witchKillUsed) return false;
+      return true;
+    });
     setNightQueue(queue);
     setNightQueueIdx(0);
     setDayVoteCompleted(false);
@@ -220,6 +228,9 @@ export default function App() {
       )}
       {screen === "seer_night" && (
         <SeerNightScreen onDone={advanceNightQueue} />
+      )}
+      {screen === "witch_night" && (
+        <WitchNightScreen onDone={advanceNightQueue} />
       )}
       {screen === "day_vote" && (
         <DayVoteScreen
