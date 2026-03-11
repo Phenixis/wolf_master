@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet } from "react-native";
+import { useShallow } from "zustand/react/shallow";
 import { useGameStore, selectAlivePlayers } from "../store/gameStore";
 import { announce } from "../utils/speech";
 
@@ -8,7 +9,7 @@ type Props = {
 };
 
 export default function MayorElectionScreen({ onDone }: Readonly<Props>) {
-  const players = useGameStore(selectAlivePlayers);
+  const players = useGameStore(useShallow(selectAlivePlayers));
   const setMayor = useGameStore((s) => s.setMayor);
   const setPhase = useGameStore((s) => s.setPhase);
   const [selectedId, setSelectedId] = useState<string | null>(null);
