@@ -14,6 +14,13 @@ export type Player = {
 
 export type GamePhase = "setup" | "role_reveal" | "night" | "mayor_election" | "day" | "ended";
 
+export type GameLogEntry = {
+  round: number;
+  phase: GamePhase;
+  type: string;
+  message: string;
+};
+
 export type GameState = {
   players: Player[];
   pendingRoles: Role[];
@@ -25,7 +32,8 @@ export type GameState = {
   witchKillUsed: boolean;
   mayorId: string | null;
   loversIds: [string, string] | null;
-  winner: "village" | "wolves" | "lovers" | null;
+  winner: "village" | "wolves" | "lovers" | "nobody" | null;
+  gameLogs: GameLogEntry[];
 };
 
 type GameActions = {
@@ -46,6 +54,7 @@ type GameActions = {
   setWinner: (team: GameState["winner"]) => void;
   nextRound: () => void;
   resetGame: () => void;
+  addLog: (type: string, message: string) => void;
 };
 
 const initialState: GameState = {
@@ -60,6 +69,7 @@ const initialState: GameState = {
   mayorId: null,
   loversIds: null,
   winner: null,
+  gameLogs: [],
 };
 
 export const useGameStore = create<GameState & GameActions>()(
@@ -115,11 +125,18 @@ export const useGameStore = create<GameState & GameActions>()(
       setPhase: (phase) => set({ phase }),
 
       eliminatePlayer: (id) =>
-        set((state) => ({
-          players: state.players.map((p) =>
-            p.id === id ? { ...p, status: "dead" } : p
-          ),
-        })),
+        set((state) => {
+          const dying = new Set([id]);
+          if (state.loversIds?.includes(id)) {
+            const other = state.loversIds.find((lid) => lid !== id);
+            if (other) dying.add(other);
+          }
+          return {
+            players: state.players.map((p) =>
+              dying.has(p.id) ? { ...p, status: "dead" } : p
+            ),
+          };
+        }),
 
       castVote: (voterId, targetId) =>
         set((state) => ({
@@ -133,12 +150,19 @@ export const useGameStore = create<GameState & GameActions>()(
       useWitchSave: () => set({ witchSaveUsed: true, nightVictimId: null }),
 
       useWitchKill: (targetId) => {
-        set((state) => ({
-          witchKillUsed: true,
-          players: state.players.map((p) =>
-            p.id === targetId ? { ...p, status: "dead" } : p
-          ),
-        }));
+        set((state) => {
+          const dying = new Set([targetId]);
+          if (state.loversIds?.includes(targetId)) {
+            const other = state.loversIds.find((lid) => lid !== targetId);
+            if (other) dying.add(other);
+          }
+          return {
+            witchKillUsed: true,
+            players: state.players.map((p) =>
+              dying.has(p.id) ? { ...p, status: "dead" } : p
+            ),
+          };
+        });
       },
 
       setMayor: (id) => set({ mayorId: id }),
@@ -153,6 +177,14 @@ export const useGameStore = create<GameState & GameActions>()(
           votes: {},
           nightVictimId: null,
           phase: "night",
+        })),
+
+      addLog: (type, message) =>
+        set((state) => ({
+          gameLogs: [
+            ...state.gameLogs,
+            { round: state.round, phase: state.phase, type, message },
+          ],
         })),
 
       resetGame: () => set(initialState),

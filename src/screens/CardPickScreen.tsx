@@ -4,7 +4,6 @@ import {
   StyleSheet, KeyboardAvoidingView, Platform, LayoutChangeEvent,
 } from "react-native";
 import { useGameStore } from "../store/gameStore";
-import { announce } from "../utils/speech";
 
 type Props = {
   onDone: () => void;
@@ -58,8 +57,6 @@ export default function CardPickScreen({ onDone }: Readonly<Props>) {
     const name = inputName.trim();
     if (!name || activeIndex === null) return;
     setRevealed(true);
-    const role = pendingRoles[activeIndex];
-    announce(`${name}, your role is ${role.name}. ${role.description}`);
   };
 
   const handleDone = () => {

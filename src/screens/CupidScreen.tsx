@@ -11,6 +11,7 @@ type Props = {
 export default function CupidScreen({ onDone }: Readonly<Props>) {
   const players = useGameStore(useShallow(selectAlivePlayers));
   const setLovers = useGameStore((s) => s.setLovers);
+  const addLog = useGameStore((s) => s.addLog);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const handleSelect = (id: string) => {
@@ -27,6 +28,7 @@ export default function CupidScreen({ onDone }: Readonly<Props>) {
     const nameA = players.find((p) => p.id === a)?.name ?? "";
     const nameB = players.find((p) => p.id === b)?.name ?? "";
     setLovers([a, b]);
+    addLog("lovers_set", `💕 ${nameA} and ${nameB} are linked as lovers.`);
     announce(`Cupid, close your eyes. ${nameA} and ${nameB} are now linked as lovers. If one dies, the other follows.`);
     onDone();
   };

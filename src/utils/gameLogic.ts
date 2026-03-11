@@ -4,30 +4,45 @@ export type WinResult =
   | { winner: "wolves" }
   | { winner: "village" }
   | { winner: "lovers"; players: [Player, Player] }
+  | { winner: "nobody" }
   | null;
 
 /**
  * Check win conditions after any elimination.
- * Priority: lovers win > wolves win > village win
+ * Priority: lovers win > nobody > wolves win > village win
  */
 export const checkWinCondition = (state: GameState): WinResult => {
   const aliveWolves = selectAliveWolves(state);
   const aliveVillagers = selectAliveVillagers(state);
   const alivePlayers = state.players.filter((p) => p.status === "alive");
 
-  // Lovers win: only the two lovers remain alive
+  // Lovers win: exactly the two lovers remain alive
   if (state.loversIds) {
     const [l1, l2] = state.loversIds;
-    const bothAlive = alivePlayers.every((p) => p.id === l1 || p.id === l2);
-    if (bothAlive && alivePlayers.length === 2) {
-      const lover1 = state.players.find((p) => p.id === l1)!;
-      const lover2 = state.players.find((p) => p.id === l2)!;
-      return { winner: "lovers", players: [lover1, lover2] };
+    if (alivePlayers.length === 2 && alivePlayers.every((p) => p.id === l1 || p.id === l2)) {
+      const lover1 = state.players.find((p) => p.id === l1);
+      const lover2 = state.players.find((p) => p.id === l2);
+      if (lover1 && lover2) return { winner: "lovers", players: [lover1, lover2] };
     }
   }
 
-  // Wolves win: wolves >= villagers
-  if (aliveWolves.length >= aliveVillagers.length) {
+  // Everyone dead — nobody wins
+  if (alivePlayers.length === 0) {
+    return { winner: "nobody" };
+  }
+
+  // Wolves win: more wolves than villagers
+  if (aliveWolves.length > aliveVillagers.length) {
+    return { winner: "wolves" };
+  }
+
+  // Wolves win: equal counts AND the mayor is a werewolf
+  if (
+    aliveWolves.length > 0 &&
+    aliveWolves.length === aliveVillagers.length &&
+    state.mayorId !== null &&
+    aliveWolves.some((w) => w.id === state.mayorId)
+  ) {
     return { winner: "wolves" };
   }
 
