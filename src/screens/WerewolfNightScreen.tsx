@@ -13,8 +13,9 @@ export default function WerewolfNightScreen({ onDone }: Readonly<Props>) {
   const setNightVictim = useGameStore((s) => s.setNightVictim);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const targets = allPlayers.filter(
-    (p) => p.status === "alive"
+  const targets = allPlayers.filter((p) => p.status === "alive");
+  const werewolfIds = new Set(
+    allPlayers.filter((p) => p.role.team === "wolves").map((p) => p.id)
   );
 
   useEffect(() => {
@@ -50,15 +51,26 @@ export default function WerewolfNightScreen({ onDone }: Readonly<Props>) {
       <FlatList
         data={targets}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[styles.playerBtn, selectedId === item.id && styles.selected]}
-            onPress={() => handleSelect(item.id)}
-          >
-            <Text style={styles.playerName}>{item.name}</Text>
-            {selectedId === item.id && <Text style={styles.badge}>🎯 Target</Text>}
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }) => {
+          const isWolf = werewolfIds.has(item.id);
+          return (
+            <TouchableOpacity
+              style={[
+                styles.playerBtn,
+                selectedId === item.id && styles.selected,
+                isWolf && styles.wolfBtn,
+              ]}
+              onPress={() => handleSelect(item.id)}
+              disabled={isWolf}
+            >
+              <Text style={[styles.playerName, isWolf && styles.wolfName]}>
+                {item.name}
+              </Text>
+              {isWolf && <Text style={styles.wolfBadge}>🐺 Werewolf</Text>}
+              {selectedId === item.id && <Text style={styles.badge}>🎯 Target</Text>}
+            </TouchableOpacity>
+          );
+        }}
         style={styles.list}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No valid targets remaining.</Text>
@@ -93,6 +105,9 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   selected: { borderColor: "#c0392b" },
+  wolfBtn: { borderColor: "#7c3c3c", backgroundColor: "#1a0a0a", opacity: 0.6 },
+  wolfName: { color: "#c0392b" },
+  wolfBadge: { color: "#c0392b", fontSize: 13, fontWeight: "bold" },
   playerName: { color: "#fff", fontSize: 18 },
   badge: { color: "#c0392b", fontSize: 14, fontWeight: "bold" },
   emptyText: { color: "#555", textAlign: "center", marginTop: 40, fontSize: 15 },
